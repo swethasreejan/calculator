@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CALCULUS</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.2/math.min.js"></script>
+<style>
+  :root{--bg:#1e120a;--card:#2b1b10;--key:#3d2817;--key2:#4e3320;--acc:#c08552;--acc2:#f0c987;--txt:#fbeedd;--mut:#b39a82;--err:#ff6b81}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:radial-gradient(circle at 20% 0%,#3b2415,var(--bg) 60%);color:var(--txt);font-family:system-ui,Segoe UI,Roboto,sans-serif;display:flex;justify-content:center;padding:16px}
+  .app{width:100%;max-width:440px}
+  h1{margin:8px 0 0;text-align:center;letter-spacing:4px;font-size:28px;background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .tag{text-align:center;color:var(--mut);margin:4px 0 16px;font-size:14px}
+  .card{background:var(--card);border-radius:18px;padding:14px;box-shadow:0 10px 30px #0006}
+  input#expr{width:100%;background:#1a0f08;border:2px solid transparent;color:var(--txt);font-size:22px;padding:12px;border-radius:12px;outline:none}
+  input#expr:focus{border-color:var(--acc)}
+  #result{min-height:56px;text-align:right;font-size:36px;font-weight:700;padding:8px 6px;word-break:break-all;color:var(--acc2)}
+  #result.err{font-size:16px;color:var(--err);font-weight:500}
+  #heard{color:var(--mut);font-size:13px;min-height:18px;padding:0 6px}
+  .row{display:flex;gap:8px;margin:8px 0}
+  .row button{flex:1}
+  button{border:0;border-radius:12px;padding:14px 0;font-size:18px;color:var(--txt);background:var(--key);cursor:pointer;transition:transform .05s,background .15s}
+  button:hover{background:var(--key2)}
+  button:active{transform:scale(.95)}
+  .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:8px}
+  .op{background:#5a3a22}.eq{background:var(--acc);font-weight:700}.danger{background:#7a2e22}
+  .fn{font-size:15px;background:#4a3322}
+  .mic.on{background:var(--err);animation:pulse 1s infinite}
+  @keyframes pulse{50%{box-shadow:0 0 0 8px #ff6b8133}}
+  #mode{flex:0 0 70px;font-size:14px}
+  #drawBox{display:none;margin-top:10px}
+  canvas{width:100%;height:160px;background:#fff;border-radius:12px;touch-action:none;display:block}
+  .hist{margin-top:14px}
+  .hist h3{margin:0 0 6px;font-size:14px;color:var(--mut);display:flex;justify-content:space-between}
+  .hist div.item{padding:6px 8px;border-radius:8px;cursor:pointer;font-size:15px;display:flex;justify-content:space-between;gap:8px}
+  .hist div.item:hover{background:var(--key)}
+  .hist .r{color:var(--acc2)}
+  small{color:var(--mut)}
+  #unitBox{display:none;margin-top:10px;background:#1a0f08;border-radius:12px;padding:10px}
+  #unitBox select,#unitBox input{width:100%;background:var(--key);color:var(--txt);border:2px solid transparent;border-radius:10px;padding:10px;font-size:16px;outline:none}
+  #unitBox input:focus,#unitBox select:focus{border-color:var(--acc)}
+  .uline{display:flex;gap:8px;margin-top:8px;align-items:center}
+  .uline>*{flex:1;min-width:0}
+  .uline button.swap{flex:0 0 46px;padding:10px 0}
+  #uOut{margin-top:10px;text-align:right;font-size:26px;font-weight:700;color:var(--acc2);word-break:break-all;min-height:34px}
+  #uOut.err{font-size:15px;color:var(--err);font-weight:500}
+  #useRes{width:100%;margin-top:6px;font-size:15px;padding:10px 0}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>CALCULUS</h1>
+  <div class="tag">Speak it. Type it. Solve it.</div>
+
+  <div class="card">
+    <input id="expr" placeholder="Type e.g. sqrt(144) or sin(30)" autocomplete="off" inputmode="text">
+    <div id="heard"></div>
+    <div id="result">0</div>
+
+    <div class="row">
+      <button id="mic" class="mic">🎤 Voice</button>
+      <button id="drawBtn">✍️ Draw</button>
+      <button id="unitBtn">⇄ Units</button>
+      <button id="mode" title="Angle mode">DEG</button>
+    </div>
+
+    <div id="drawBox">
+      <canvas id="pad"></canvas>
+      <div class="row">
+        <button id="clearPad">Clear</button>
+        <button id="recog">Recognize</button>
+      </div>
+      <small id="drawMsg"></small>
+    </div>
+
+    <div id="unitBox">
+      <select id="uCat"></select>
+      <div class="uline"><input id="uVal" type="number" step="any" value="1" inputmode="decimal"></div>
+      <div class="uline">
+        <select id="uFrom"></select>
+        <button class="swap" id="uSwap" title="Swap units">⇄</button>
+        <select id="uTo"></select>
+      </div>
+      <div id="uOut"></div>
+      <button id="useRes">Use result in calculator</button>
+    </div>
+
+    <div class="grid" id="keys"></div>
+
+    <div class="hist">
+      <h3><span>History</span><span id="clearHist" style="cursor:pointer">clear</span></h3>
+      <div id="hist"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- Calculation core ---------- */
+let degMode = true;
+const $ = id => document.getElementById(id);
+
+function makeScope(){
+  const toR = x => degMode ? x*Math.PI/180 : x;
+  const fromR = x => degMode ? x*180/Math.PI : x;
+  return {
+    sin:x=>math.sin(toR(x)), cos:x=>math.cos(toR(x)), tan:x=>math.tan(toR(x)),
+    asin:x=>fromR(math.asin(x)), acos:x=>fromR(math.acos(x)), atan:x=>fromR(math.atan(x)),
+    log:x=>math.log10(x),   // log = base 10
+    ln:x=>math.log(x)       // ln  = natural
+  };
+}
+function clean(s){
+  return s.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-')
+          .replace(/π/g,'pi').replace(/√/g,'sqrt').replace(/\s+/g,' ');
+}
+function calculate(raw){
+  const r = math.evaluate(clean(raw), makeScope());
+  if (typeof r === 'function' || r === undefined) throw new Error('Not a number');
+  return math.format(r, {precision:12});
+}
+
+/* ---------- UI: keypad ---------- */
+const keys = [
+  ['sin','sin(','fn'],['cos','cos(','fn'],['tan','tan(','fn'],['√x','sqrt(','fn'],['x²','^2','fn'],['xʸ','^','fn'],
+  ['log','log(','fn'],['ln','ln(','fn'],['7','7'],['8','8'],['9','9'],['÷','/','op'],
+  ['(','('],[')',')'],['4','4'],['5','5'],['6','6'],['×','*','op'],
+  ['π','pi'],['!','!','fn'],['1','1'],['2','2'],['3','3'],['−','-','op'],
+  ['AC','AC','danger'],['DEL','DEL','danger'],['0','0'],['.','.'],['=','=','eq'],['+','+','op']
+];
+keys.forEach(([label,val,cls])=>{
+  const b=document.createElement('button'); b.textContent=label; if(cls)b.className=cls;
+  b.onclick=()=>press(val); $('keys').appendChild(b);
+});
+function press(v){
+  const e=$('expr'); e.focus();
+  if(v==='AC'){e.value='';show('0');$('heard').textContent='';}
+  else if(v==='DEL'){e.value=e.value.slice(0,-1);}
+  else if(v==='='){solve();}
+  else{ e.value+=v; }
+}
+function show(t,err){const r=$('result');r.textContent=t;r.className=err?'err':'';}
+function solve(){
+  const raw=$('expr').value.trim(); if(!raw) return;
+  try{ const out=calculate(raw); show(out); addHist(raw,out); }
+  catch(e){ show('Could not solve that. Check the expression.',true); }
+}
+$('expr').addEventListener('keydown',e=>{ if(e.key==='Enter') solve(); });
+$('mode').onclick=()=>{degMode=!degMode;$('mode').textContent=degMode?'DEG':'RAD';};
+
+/* ---------- History ---------- */
+let hist=[];
+try{ hist=JSON.parse(localStorage.getItem('calculushist')||'[]'); }catch(e){}
+function addHist(q,a){
+  hist.unshift([q,a]); hist=hist.slice(0,15);
+  try{localStorage.setItem('calculushist',JSON.stringify(hist));}catch(e){}
+  renderHist();
+}
+function renderHist(){
+  const box=$('hist'); box.innerHTML='';
+  hist.forEach(([q,a])=>{
+    const d=document.createElement('div'); d.className='item';
+    d.innerHTML='<span></span><span class="r"></span>';
+    d.children[0].textContent=q; d.children[1].textContent='= '+a;
+    d.onclick=()=>{$('expr').value=q;show(a);};
+    box.appendChild(d);
+  });
+}
+$('clearHist').onclick=()=>{hist=[];try{localStorage.removeItem('calculushist');}catch(e){}renderHist();};
+renderHist();
+
+/* ---------- Voice: speech -> expression ---------- */
+const SMALL={zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19};
+const TENS={twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90};
+
+function convertNumberWords(tokens){
+  const out=[]; let total=0,cur=0,active=false,dec=null;
+  const flush=()=>{
+    if(active){ let n=String(total+cur); if(dec!==null) n+='.'+dec; out.push(n); }
+    total=0;cur=0;active=false;dec=null;
+  };
+  for(const t of tokens){
+    if(dec!==null && t in SMALL && SMALL[t]<10){ dec+=SMALL[t]; continue; }
+    if(t==='point'){ if(!active){active=true;} dec=''; continue; }
+    if(t in SMALL){ if(dec!==null) flush(); cur+=SMALL[t]; active=true; }
+    else if(t in TENS){ cur+=TENS[t]; active=true; }
+    else if(t==='hundred'){ cur=(cur||1)*100; active=true; }
+    else if(t==='thousand'){ total+=(cur||1)*1000; cur=0; active=true; }
+    else if(t==='lakh'){ total+=(cur||1)*100000; cur=0; active=true; }
+    else if(t==='and' && active){ /* "one hundred and five" */ }
+    else{ flush(); out.push(t); }
+  }
+  flush(); return out;
+}
+
+function speechToExpression(speech){
+  let s=speech.toLowerCase().replace(/[?,]/g,' ').replace(/-/g,' ');
+  s=s.replace(/\b(what is|what's|whats|calculate|compute|solve|please|equals|equal to|the value of|find)\b/g,' ');
+  s=s.replace(/(\d),(\d)/g,'$1$2');
+  s=convertNumberWords(s.split(/\s+/).filter(Boolean)).join(' ');
+
+  const N='(\\d+(?:\\.\\d+)?|pi)';
+  s=s.replace(new RegExp(N+' (?:percent|%) of '+N,'g'),'($1/100*$2)');
+  s=s.replace(new RegExp('square root of '+N,'g'),'sqrt($1)');
+  s=s.replace(new RegExp('(?:natural log|ln|log base e) of '+N,'g'),'ln($1)');
+  s=s.replace(new RegExp('(?:log|logarithm) of '+N,'g'),'log($1)');
+  s=s.replace(new RegExp('(?:sine|sin) of '+N+'(?: degrees?)?','g'),'sin($1)');
+  s=s.replace(new RegExp('(?:cosine|cos) of '+N+'(?: degrees?)?','g'),'cos($1)');
+  s=s.replace(new RegExp('(?:tangent|tan) of '+N+'(?: degrees?)?','g'),'tan($1)');
+  s=s.replace(new RegExp(N+' squared','g'),'$1^2');
+  s=s.replace(new RegExp(N+' cubed','g'),'$1^3');
+  s=s.replace(new RegExp('factorial of '+N,'g'),'$1!');
+  s=s.replace(/\b(to the power of|to the power|raised to the power of|raised to|power)\b/g,'^');
+  s=s.replace(/\b(multiplied by|multiply by|times|into)\b|(?<=\d) x (?=\d)/g,'*');
+  s=s.replace(/\b(divided by|divide by|over)\b/g,'/');
+  s=s.replace(/\b(plus|add|and)\b/g,'+');
+  s=s.replace(/\b(minus|subtract|less)\b/g,'-');
+  s=s.replace(/\b(open bracket|open parenthesis)\b/g,'(').replace(/\b(close bracket|close parenthesis)\b/g,')');
+  s=s.replace(/\bpie?\b/g,'pi');
+  return s.replace(/\s+/g,' ').trim();
+}
+
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null,listening=false;
+$('mic').onclick=()=>{
+  if(!SR){ show('Voice input is not supported in this browser. Try Chrome or Edge, or type instead.',true); return; }
+  if(listening){ rec.stop(); return; }
+  rec=new SR(); rec.lang='en-IN'; rec.interimResults=false; rec.maxAlternatives=1;
+  rec.onstart=()=>{listening=true;$('mic').classList.add('on');$('mic').textContent='🎤 Listening…';$('heard').textContent='';};
+  rec.onend=()=>{listening=false;$('mic').classList.remove('on');$('mic').textContent='🎤 Voice';};
+  rec.onerror=e=>{
+    const msg = e.error==='not-allowed' ? 'Microphone permission denied. Allow mic access or type instead.'
+              : e.error==='no-speech' ? 'Did not hear anything. Try again.'
+              : 'Voice error: '+e.error;
+    show(msg,true);
+  };
+  rec.onresult=e=>{
+    const said=e.results[0][0].transcript;
+    $('heard').textContent='Heard: "'+said+'"';
+    const ex=speechToExpression(said);
+    $('expr').value=ex; solve();
+  };
+  try{ rec.start(); }catch(err){ show('Could not start the microphone.',true); }
+};
+
+/* ---------- Drawing canvas ---------- */
+const pad=$('pad'),ctx=pad.getContext('2d');let drawing=false;
+function sizePad(){const r=pad.getBoundingClientRect();pad.width=r.width;pad.height=r.height;ctx.lineWidth=4;ctx.lineCap='round';ctx.strokeStyle='#111';}
+$('drawBtn').onclick=()=>{const b=$('drawBox');b.style.display=b.style.display==='block'?'none':'block';if(b.style.display==='block')sizePad();};
+const pos=e=>{const r=pad.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top];};
+pad.addEventListener('pointerdown',e=>{drawing=true;ctx.beginPath();ctx.moveTo(...pos(e));pad.setPointerCapture(e.pointerId);});
+pad.addEventListener('pointermove',e=>{if(!drawing)return;ctx.lineTo(...pos(e));ctx.stroke();});
+['pointerup','pointercancel'].forEach(ev=>pad.addEventListener(ev,()=>drawing=false));
+$('clearPad').onclick=()=>{ctx.clearRect(0,0,pad.width,pad.height);$('drawMsg').textContent='';};
+
+/* TODO (Phase 3): connect a real handwriting-math recognizer here.
+   Send canvas.toDataURL('image/png') to an OCR service/model that returns
+   text like "25+15", then do: $('expr').value = text; solve(); */
+async function recognizeHandwriting(canvas){
+  throw new Error('No recognizer connected yet');
+}
+$('recog').onclick=async()=>{
+  try{ const t=await recognizeHandwriting(pad); $('expr').value=t; solve(); }
+  catch(e){ $('drawMsg').textContent='Handwriting recognition is not connected yet. Type or speak the equation for now.'; }
+};
+/* ---------- Unit converter ---------- */
+const UNITS={
+  'Length':{base:'m',u:{'millimetre':0.001,'centimetre':0.01,'metre':1,'kilometre':1000,'inch':0.0254,'foot':0.3048,'yard':0.9144,'mile':1609.344}},
+  'Mass':{u:{'milligram':1e-6,'gram':0.001,'kilogram':1,'tonne':1000,'ounce':0.028349523125,'pound':0.45359237}},
+  'Temperature':{temp:true,u:{'Celsius':1,'Fahrenheit':1,'Kelvin':1}},
+  'Time':{u:{'millisecond':0.001,'second':1,'minute':60,'hour':3600,'day':86400,'week':604800}},
+  'Area':{u:{'sq centimetre':1e-4,'sq metre':1,'hectare':1e4,'sq kilometre':1e6,'sq foot':0.09290304,'acre':4046.8564224}},
+  'Volume':{u:{'millilitre':0.001,'litre':1,'cubic metre':1000,'teaspoon (US)':0.00492892159375,'cup (US)':0.2365882365,'gallon (US)':3.785411784}},
+  'Speed':{u:{'m/s':1,'km/h':1/3.6,'mph':0.44704,'knot':1852/3600}},
+  'Data':{u:{'bit':0.125,'byte':1,'KB':1024,'MB':1048576,'GB':1073741824,'TB':1099511627776}}
+};
+function fillSel(sel,arr,sel2){sel.innerHTML='';arr.forEach((n,i)=>{const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);});}
+function loadUnits(){
+  const names=Object.keys(UNITS[$('uCat').value].u);
+  fillSel($('uFrom'),names); fillSel($('uTo'),names);
+  $('uTo').selectedIndex=Math.min(1,names.length-1);
+  convertUnits();
+}
+function toCelsius(v,u){return u==='Celsius'?v:u==='Fahrenheit'?(v-32)*5/9:v-273.15;}
+function fromCelsius(c,u){return u==='Celsius'?c:u==='Fahrenheit'?c*9/5+32:c+273.15;}
+function convertUnits(){
+  const out=$('uOut'); const raw=$('uVal').value;
+  if(raw===''||isNaN(Number(raw))){out.textContent='Enter a number';out.className='err';return;}
+  const v=Number(raw),cat=UNITS[$('uCat').value],f=$('uFrom').value,t=$('uTo').value;
+  let r;
+  if(cat.temp) r=fromCelsius(toCelsius(v,f),t);
+  else r=v*cat.u[f]/cat.u[t];
+  out.className='';
+  out.textContent=math.format(r,{precision:10})+' '+t;
+}
+$('uCat').innerHTML=Object.keys(UNITS).map(k=>'<option>'+k+'</option>').join('');
+$('uCat').onchange=loadUnits;
+['uVal','uFrom','uTo'].forEach(id=>$(id).addEventListener(id==='uVal'?'input':'change',convertUnits));
+$('uSwap').onclick=()=>{const a=$('uFrom').value;$('uFrom').value=$('uTo').value;$('uTo').value=a;convertUnits();};
+$('unitBtn').onclick=()=>{const b=$('unitBox');b.style.display=b.style.display==='block'?'none':'block';};
+$('useRes').onclick=()=>{
+  const m=$('uOut').textContent.match(/^-?[\d.]+(?:e[+-]?\d+)?/i);
+  if(m){$('expr').value+=m[0];$('expr').focus();}
+};
+loadUnits();
+</script>
+</body>
+</html>
